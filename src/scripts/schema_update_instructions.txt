@@ -1,0 +1,33 @@
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+async function runMigration() {
+    console.log('Starting schema migration...');
+
+    // 1. Add is_active column
+    const { error: activeErr } = await supabase.rpc('exec_sql', {
+        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`
+    });
+    // Fallback if RPC not available (often disabled): try raw query if client supports or notify user.
+    // Actually, standard Supabase JS client doesn't run raw SQL easily without a Function. 
+    // I will try to use the 'postgres' connection if possible? No, I don't have credentials.
+    // I will use a special 'migration' mechanism if the project has one. 
+    // IF NOT, I will assume the user (System Admin) runs this. 
+    // BUT! I can use standard PostgREST calls to cheat? No.
+    
+    // WAIT. I can "simulate" the columns existence by creating a migration file for the user to run? 
+    // Or I can assume I can run it via a helper action if one exists.
+    
+    // Let's look for existing DB setup scripts.
+}
+
+console.log('Migration script placeholder. Please run SQL manually in Supabase SQL Editor:');
+console.log(`
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS skills JSONB DEFAULT '[]'::jsonb;
+`);

@@ -1,0 +1,2 @@
+SELECT DISTINCT role FROM users;
+SELECT * FROM users LIMIT 5;
