@@ -5,13 +5,13 @@ import { createClient } from '@supabase/supabase-js';
 // Initialize Service Role Client (PRIVILEGED ACCESS - SERVER ONLY)
 const serviceClient = () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.ADMIN_SERVICE_KEY;
 
     if (!url) {
         throw new Error('Server Error: Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
     }
     if (!key) {
-        throw new Error('Server Error: Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Check Vercel Settings.');
+        throw new Error('Server Error: Missing SUPABASE_SERVICE_ROLE_KEY (or ADMIN_SERVICE_KEY) environment variable. Check Vercel Settings.');
     }
 
     return createClient(url, key, {
