@@ -34,13 +34,13 @@ function DebugContent() {
                 addLog(`   Node Env: ${res.nodeEnv}`);
                 addLog(`   Vercel Env: ${res.vercelEnv || 'N/A'}`);
                 addLog(`   Is Edge: ${res.isEdge ? 'YES' : 'NO'}`);
-                addLog(`   Supabase Keys Found: ${res.visibleSupabaseKeys.join(', ')}`);
+                addLog(`   Supabase Keys Found: ${(res.visibleSupabaseKeys || []).join(', ')}`);
 
                 if (res.hasServiceKey) {
                     addLog(`✅ Service Key is PRESENT (Length: ${res.serviceKeyLength})`);
                 } else {
                     addLog(`❌ Service Key is MISSING!`);
-                    addLog(`   Found keys: ${JSON.stringify(res.visibleSupabaseKeys)}`);
+                    addLog(`   Found keys: ${JSON.stringify(res.visibleSupabaseKeys || [])}`);
                 }
             } else {
                 addLog(`❌ Env Check Failed: ${res.error}`);
