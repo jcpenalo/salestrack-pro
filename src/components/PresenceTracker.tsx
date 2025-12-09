@@ -3,31 +3,36 @@
 import { useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-export function PresenceTracker({ userId }: { userId: string }) {
+export function PresenceTracker() {
     useEffect(() => {
-        if (!userId) return;
+        const trackPresence = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
 
-        const channel = supabase.channel('online_users', {
-            config: {
-                presence: {
-                    key: userId,
+            const channel = supabase.channel('online_users', {
+                config: {
+                    presence: {
+                        key: user.id,
+                    },
                 },
-            },
-        });
+            });
 
-        channel.subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-                await channel.track({
-                    online_at: new Date().toISOString(),
-                    user_id: userId,
-                });
-            }
-        });
+            channel.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await channel.track({
+                        online_at: new Date().toISOString(),
+                        user_id: user.id,
+                    });
+                }
+            });
 
-        return () => {
-            supabase.removeChannel(channel);
+            return () => {
+                supabase.removeChannel(channel);
+            };
         };
-    }, [userId]);
+
+        trackPresence();
+    }, []);
 
     return null; // Invisible component
 }

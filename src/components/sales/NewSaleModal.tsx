@@ -33,7 +33,7 @@ export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSale
     const uniqueProductNames = useMemo(() => {
         if (!masterData.products) return [];
         const names = new Set(masterData.products.map((p: any) => p.name));
-        return Array.from(names).sort();
+        return Array.from(names).sort() as string[];
     }, [masterData.products]);
 
     // Filter available plans based on selected product name

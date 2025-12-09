@@ -45,7 +45,7 @@ export default function SummaryPage() {
             if (session) {
                 const res = await getSummaryStatsAction(session.access_token, month, year, groupBy1, groupBy2);
                 if (res.success) {
-                    setData(res.data);
+                    setData(res.data || []);
                 } else {
                     console.error(res.error);
                 }
