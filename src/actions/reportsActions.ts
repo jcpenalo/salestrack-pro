@@ -118,7 +118,7 @@ export async function getReportsStatsAction(token: string, campaignId?: string, 
         if (recentError) throw recentError;
 
         // Grid: 7 days (0-6 Sun-Sat) x 24 hours (0-23)
-        const heatmap = [];
+        const heatmap: { day: number; hour: number; value: number }[] = [];
         const grid = Array(7).fill(0).map(() => Array(24).fill(0));
 
         recentSales?.forEach(s => {
