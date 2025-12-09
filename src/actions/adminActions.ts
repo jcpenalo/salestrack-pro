@@ -7,8 +7,11 @@ const serviceClient = () => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!url || !key) {
-        throw new Error('Missing Supabase Service Key configuration');
+    if (!url) {
+        throw new Error('Server Error: Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+    }
+    if (!key) {
+        throw new Error('Server Error: Missing SUPABASE_SERVICE_ROLE_KEY environment variable. Check Vercel Settings.');
     }
 
     return createClient(url, key, {
