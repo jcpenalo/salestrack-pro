@@ -33,7 +33,7 @@ export default function ReportsPage() {
                     const res = await getReportsStatsAction(session.access_token, campaignId, statusId);
                     if (res.success) {
                         setData(res.data);
-                        if (res.data.options) {
+                        if (res.data?.options) {
                             setOptions(res.data.options);
                         }
                     }
