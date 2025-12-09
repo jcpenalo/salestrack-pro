@@ -58,6 +58,10 @@ export function AdminUsersView() {
 
             if (res.success) {
                 setUsers(res.data || []);
+            } else {
+                console.error('Server Action Failed:', res.error);
+                // If it's the Service Key error, show a friendly component message later, but for now Alert is fine for Admin.
+                alert(`Error loading users: ${res.error}`);
             }
         } catch (error) {
             console.error('Fetch error:', error);
