@@ -303,9 +303,10 @@ export default function PermissionsPage() {
                                                         {isLoading ? (
                                                             <Loader2 size={10} className="animate-spin" />
                                                         ) : (
-                                                            isCreator ? <Lock size={10} /> : (isAllowed && <Check size={12} strokeWidth={3} />)
+                                                            isCreator ? <Check size={12} strokeWidth={3} /> : (isAllowed && <Check size={12} strokeWidth={3} />)
                                                         )}
                                                     </button>
+                                                    {isCreator && <Lock size={8} className="absolute top-0.5 right-0.5 text-indigo-600 opacity-70" />}
                                                 </div>
                                             </td>
                                         );

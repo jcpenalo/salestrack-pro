@@ -1,17 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
+// ... imports
+import { useUserProfile } from '@/hooks/useUserProfile';
 
-interface NewSaleModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    masterData: any;
-    onSuccess: () => void;
-}
+// ... interface
 
 export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSaleModalProps) {
+    const { profile } = useUserProfile();
+    const canAssign = ['admin', 'creator', 'supervisor', 'gerente', 'senior_supervisor'].includes(profile?.role || '');
+
     const [loading, setLoading] = useState(false);
     const [selectedProductName, setSelectedProductName] = useState('');
     const [formData, setFormData] = useState({
@@ -25,56 +22,18 @@ export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSale
         id_document: '',
         os_madre: '',
         os_hija: '',
-        plan_sold: '', // Will store the same logic as product_id conceptually, but UI shows plans
-        pp: ''
+        plan_sold: '',
+        pp: '',
+        assigned_to: '' // Added field
     });
 
-    // Extract unique product names for the first dropdown
-    const uniqueProductNames = useMemo(() => {
-        if (!masterData.products) return [];
-        const names = new Set(masterData.products.map((p: any) => p.name));
-        return Array.from(names).sort() as string[];
-    }, [masterData.products]);
+    // ... useMemo uniqueProductNames
 
-    // Filter available plans based on selected product name
-    const availablePlans = useMemo(() => {
-        if (!selectedProductName || !masterData.products) return [];
-        return masterData.products.filter((p: any) => p.name === selectedProductName);
-    }, [selectedProductName, masterData.products]);
+    // ... useMemo availablePlans
 
-    // Auto-fill PP and Concept when specific Product ID (Plan) changes
-    useEffect(() => {
-        if (formData.product_id && masterData.products) {
-            const product = masterData.products.find((p: any) => p.id === formData.product_id);
+    // ... useEffect auto-fill
 
-            console.log('Selected Plan/Product:', product); // Debugging
-
-            if (product) {
-                // Determine Concept
-                let conceptId = '';
-                if (product.concept && masterData.concepts) {
-                    const concept = masterData.concepts.find((c: any) =>
-                        c.name.trim().toLowerCase() === product.concept.trim().toLowerCase()
-                    );
-                    if (concept) conceptId = concept.id;
-                }
-
-                setFormData(prev => ({
-                    ...prev,
-                    plan_sold: product.plans || '',
-                    pp: product.pp || '',
-                    concept_id: conceptId || prev.concept_id
-                }));
-            }
-        }
-    }, [formData.product_id, masterData.products, masterData.concepts]);
-
-    // Handle Product Name Change (Reset Plan)
-    const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newName = e.target.value;
-        setSelectedProductName(newName);
-        setFormData(prev => ({ ...prev, product_id: '', plan_sold: '', pp: '', concept_id: '' }));
-    };
+    // ... handleProductChange
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -84,17 +43,16 @@ export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSale
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            // Call Server Action (dynamically imported to avoid circular deps if any)
             const { createSaleAction } = await import('@/actions/saleActions');
 
-            // Sanitize payload
             const payload = {
                 ...formData,
                 campaign_id: formData.campaign_id || null,
                 product_id: formData.product_id || null,
                 concept_id: formData.concept_id || null,
                 status_id: formData.status_id || null,
-                pp: formData.pp || null
+                pp: formData.pp || null,
+                assigned_to: formData.assigned_to || null // Pass explicit assignment if set
             };
 
             const res = await createSaleAction(payload, session.access_token);
@@ -102,7 +60,6 @@ export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSale
             if (res.success) {
                 onSuccess();
                 onClose();
-                // Reset form?
             } else {
                 alert('Error creating sale: ' + res.error);
             }
@@ -115,6 +72,10 @@ export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSale
     };
 
     if (!isOpen) return null;
+
+    const assignableUsers = masterData.users?.filter((u: any) =>
+        ['digitacion', 'seguimiento'].includes(u.role?.toLowerCase())
+    ) || [];
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -213,101 +174,169 @@ export function NewSaleModal({ isOpen, onClose, masterData, onSuccess }: NewSale
                     {/* Product Info */}
                     <div className="col-span-1 md:col-span-2 lg:col-span-4 border-t border-border my-1"></div>
 
-                    <div className="space-y-1 col-span-2">
-                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">Product</label>
-                        <select
-                            required
-                            className="w-full px-2 py-1 rounded text-xs border bg-background"
-                            value={selectedProductName}
-                            onChange={handleProductChange}
-                        >
-                            <option value="">Select Product</option>
-                            {uniqueProductNames.map((name: string) => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
-                        </select>
-                    </div>
+    // 1. Extract Unique Product Names for the first dropdown
+    const uniqueProductNames = useMemo(() => {
+        if (!masterData.products) return [];
+        const names = new Set(masterData.products.map((p: any) => p.name));
+                    return Array.from(names).sort();
+    }, [masterData.products]);
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">Plan Sold</label>
-                        <select
-                            required
-                            className="w-full px-2 py-1 rounded text-xs border bg-background"
-                            value={formData.product_id}
-                            disabled={!selectedProductName}
-                            onChange={e => setFormData({ ...formData, product_id: e.target.value })}
-                        >
-                            <option value="">Select Plan</option>
-                            {availablePlans.map((p: any) => (
-                                <option key={p.id} value={p.id}>{p.plans}</option>
-                            ))}
-                        </select>
-                    </div>
+    // 2. Filter Plans based on selected Product Name
+    const availablePlans = useMemo(() => {
+        if (!selectedProductName || !masterData.products) return [];
+        return masterData.products.filter((p: any) => p.name === selectedProductName);
+    }, [selectedProductName, masterData.products]);
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">PP</label>
-                        <input
-                            type="text"
-                            readOnly
-                            className="w-full px-2 py-1 rounded text-xs border bg-secondary/50 text-muted-foreground cursor-not-allowed"
-                            value={formData.pp}
-                        />
-                    </div>
+                    // 3. Handle Product Name Change
+                    const handleProductNameChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const name = e.target.value;
+                        setSelectedProductName(name);
+        // Reset dependent fields
+        setFormData(prev => ({
+                            ...prev,
+                            product_id: '',
+                        plan_sold: '', // Visual helper if needed, but we use product_id as the unique row ID
+                        pp: '',
+                        concept_id: ''
+        }));
+    };
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">Concept</label>
-                        <div className="relative">
-                            <select
-                                required
-                                className="w-full px-2 py-1 rounded text-xs border bg-secondary/50 appearance-none pointer-events-none"
-                                value={formData.concept_id}
-                                disabled
-                                tabIndex={-1}
-                                onChange={() => { }}
+                        // 4. Handle Specific Plan (Row) Selection -> Auto-Fill PP & Concept
+                        const handlePlanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const productId = e.target.value;
+        const selectedRow = masterData.products?.find((p: any) => p.id === productId);
+
+                            if (selectedRow) {
+            // Find concept ID based on name if possible, or just use what's in the row if it's an ID
+            // The product row usually stores 'concept' as a NAME (string) based on the table definition
+            // But the Sale needs a concept_id (UUID).
+            // We need to find the matching concept ID from masterData.concepts
+            const conceptObj = masterData.concepts?.find((c: any) => c.name === selectedRow.concept);
+            
+            setFormData(prev => ({
+                                ...prev,
+                                product_id: productId,
+                            plan_sold: selectedRow.plans, // Store plan name for display/logic
+                            pp: selectedRow.pp || '',
+                            concept_id: conceptObj ? conceptObj.id : '' // Auto-link Concept ID
+            }));
+        } else {
+                                setFormData(prev => ({ ...prev, product_id: productId }));
+        }
+    };
+
+                            // ...
+
+                            <div className="space-y-1 col-span-2">
+                                <label className="text-[10px] font-semibold uppercase text-muted-foreground">Product (Catalog)</label>
+                                <select
+                                    required
+                                    className="w-full px-2 py-1 rounded text-xs border bg-background"
+                                    value={selectedProductName}
+                                    onChange={handleProductNameChange}
+                                >
+                                    <option value="">Select Product Family</option>
+                                    {uniqueProductNames.map((name: string) => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase text-muted-foreground">Plan Sold</label>
+                                <select
+                                    required
+                                    className="w-full px-2 py-1 rounded text-xs border bg-background"
+                                    value={formData.product_id}
+                                    disabled={!selectedProductName}
+                                    onChange={handlePlanChange}
+                                >
+                                    <option value="">Select Plan</option>
+                                    {availablePlans.map((p: any) => (
+                                        <option key={p.id} value={p.id}>{p.plans} ({p.pp})</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase text-muted-foreground">PP (Auto)</label>
+                                <input
+                                    type="text"
+                                    readOnly
+                                    className="w-full px-2 py-1 rounded text-xs border bg-secondary/50 text-muted-foreground font-mono"
+                                    value={formData.pp}
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase text-muted-foreground">Concept (Auto)</label>
+                                <select
+                                    required
+                                    className="w-full px-2 py-1 rounded text-xs border bg-secondary/50 appearance-none pointer-events-none text-muted-foreground"
+                                    value={formData.concept_id}
+                                    disabled
+                                    tabIndex={-1}
+                                    onChange={() => { }}
+                                >
+                                    <option value="">Auto-filled from Product</option>
+                                    {masterData.concepts?.map((c: any) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold uppercase text-muted-foreground">Status</label>
+                                <select
+                                    required
+                                    className="w-full px-2 py-1 rounded text-xs border bg-background"
+                                    value={formData.status_id}
+                                    onChange={e => setFormData({ ...formData, status_id: e.target.value })}
+                                >
+                                    <option value="">Select Status</option>
+                                    {masterData.statuses?.map((s: any) => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Admin Assignment Override */}
+                            {canAssign && (
+                                <div className="space-y-1 border-l pl-2 border-indigo-500/30">
+                                    <label className="text-[10px] font-bold uppercase text-indigo-600">Assign To (Override)</label>
+                                    <select
+                                        className="w-full px-2 py-1 rounded text-xs border border-indigo-200 bg-indigo-50/10"
+                                        value={formData.assigned_to}
+                                        onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}
+                                    >
+                                        <option value="">Auto-Assign (Default)</option>
+                                        {assignableUsers.map((u: any) => (
+                                            <option key={u.id} value={u.id}>{u.full_name} ({u.role})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                        </form>
+
+                        <div className="p-4 border-t border-border flex justify-end gap-3 sticky bottom-0 bg-card z-10">
+                            <button
+                                onClick={onClose}
+                                className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
+                                disabled={loading}
                             >
-                                <option value="">Select Concept</option>
-                                {masterData.concepts?.map((c: any) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
+                            >
+                                {loading && <Loader2 className="animate-spin" size={16} />}
+                                Save Sale
+                            </button>
                         </div>
                     </div>
-
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-semibold uppercase text-muted-foreground">Status</label>
-                        <select
-                            required
-                            className="w-full px-2 py-1 rounded text-xs border bg-background"
-                            value={formData.status_id}
-                            onChange={e => setFormData({ ...formData, status_id: e.target.value })}
-                        >
-                            <option value="">Select Status</option>
-                            {masterData.statuses?.map((s: any) => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                </form>
-
-                <div className="p-4 border-t border-border flex justify-end gap-3 sticky bottom-0 bg-card z-10">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary transition-colors"
-                        disabled={loading}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="bg-primary text-primary-foreground px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
-                    >
-                        {loading && <Loader2 className="animate-spin" size={16} />}
-                        Save Sale
-                    </button>
-                </div>
             </div>
-        </div>
-    );
+            );
 }

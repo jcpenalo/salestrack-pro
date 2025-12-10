@@ -52,11 +52,17 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
                 return;
             }
 
-            // 2. Fetch Profile & Permissions in Parallel
-            const [profileRes, permRes] = await Promise.all([
+            // 2. Fetch Profile & Permissions in Parallel (with Timeout)
+            const fetchPromise = Promise.all([
                 supabase.from('users').select('*').eq('id', currentUser.id).single(),
-                supabase.from('app_permissions').select('resource_key, is_allowed') // We will fetch ALL for now to cache map, or fetch by role later
+                supabase.from('app_permissions').select('resource_key, is_allowed')
             ]);
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Permissions check timed out')), 5000)
+            );
+
+            const [profileRes, permRes] = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
             const userProfile = profileRes.data || null;
             setProfile(userProfile);
@@ -104,7 +110,11 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     // Helper: hasPermission
     const hasPermission = (key: string): boolean => {
         if (!profile) return false;
-        if (profile.role === 'creator') return true; // Super Admin Override
+
+        // Normalize role to avoid case sensitivity issues (e.g. Creator vs creator)
+        const role = profile.role?.toLowerCase() || '';
+
+        if (role === 'creator') return true; // Super Admin Override
 
         // Look for explicit rule
         // Assuming strict deny by default if not found? Or strict allow?

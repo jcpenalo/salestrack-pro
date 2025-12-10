@@ -66,30 +66,7 @@ export function ConceptsView() {
 
         setIsSubmitting(true);
         try {
-            // Force a FRESH connection for this specific request
-            // 1. Get current valid session token
-            const { data: { session } } = await supabase.auth.getSession();
-            const accessToken = session?.access_token;
-
-            if (!accessToken) throw new Error('No active session');
-
-            // 2. Create client WITH auth headers
-            const localClient = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-                {
-                    global: {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`
-                        }
-                    },
-                    auth: {
-                        persistSession: false // Still keep it clean locally
-                    }
-                }
-            );
-
-            // Explicit payload construction
+            // Use global supabase client which handles auth automatically
             const payload = {
                 name: formData.name,
                 type: 'sale',
@@ -97,13 +74,13 @@ export function ConceptsView() {
             };
 
             if (editingId) {
-                const { error } = await localClient
+                const { error } = await supabase
                     .from('concepts')
                     .update(payload)
                     .eq('id', editingId);
                 if (error) throw error;
             } else {
-                const { error } = await localClient
+                const { error } = await supabase
                     .from('concepts')
                     .insert([payload]);
                 if (error) throw error;

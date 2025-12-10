@@ -319,6 +319,7 @@ export function AdminUsersView() {
                                 disabled={editingUser.role === 'creator'} // Protect Creator Role
                                 className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
+                                <option value="agent">Agent (Standard)</option>
                                 <option value="admin">Admin</option>
                                 <option value="creator" disabled>Creator (System Only)</option>
                                 <option value="gerente">Gerente</option>
